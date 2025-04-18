@@ -28,10 +28,6 @@ export class ScavengerHuntInfrastructureStack extends Stack {
     pipeline.addStage(
       new ScavengerHuntStage(this, "beta-stage", {
         stageType: "beta",
-        // env: {
-        //   account: "105227738989",
-        //   region: "us-east-1",
-        // },
       }),
     )
   }

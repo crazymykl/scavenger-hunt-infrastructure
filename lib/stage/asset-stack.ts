@@ -22,7 +22,7 @@ export class AssetStack extends Stack {
       errorResponses: [
         {
           httpStatus: 404,
-          responsePagePath: "index.html",
+          responsePagePath: "/index.html",
           responseHttpStatus: 200,
         },
       ],
