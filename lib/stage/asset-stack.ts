@@ -33,10 +33,14 @@ export class AssetStack extends Stack {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
     })
 
-    const { publicKey } = new CloudFrontKeyPair(this, "keyPair", {
-      name: `admin-key-pair-${props.stageType}`,
-      description: "restricts access to the admin (non-public) page",
-    })
+    const { keyPair, publicKey, publicKeyIdSecretArn } = new CloudFrontKeyPair(
+      this,
+      "keyPair",
+      {
+        name: `admin-key-pair-${props.stageType}`,
+        description: "restricts access to the admin (non-public) page",
+      },
+    )
 
     const keyGroup = new KeyGroup(this, "keyGroup", {
       items: [publicKey],
@@ -58,18 +62,21 @@ export class AssetStack extends Stack {
             command: [
               "bash",
               "-c",
-              "npm ci && npm run build && cp dist/* package.json package-lock.json /asset-output",
+              [
+                "npm i",
+                "npm run build",
+                "cp dist/* package.json package-lock.json /asset-output",
+              ].join(" && "),
             ],
           },
         },
       ),
       handler: "index.handler",
       runtime: Runtime.NODEJS_22_X,
-
       initialPolicy: [
         new PolicyStatement({
           actions: ["secretsmanager:GetSecretValue"],
-          resources: ["*"],
+          resources: [keyPair.privateKeyArn, publicKeyIdSecretArn],
           effect: Effect.ALLOW,
         }),
       ],

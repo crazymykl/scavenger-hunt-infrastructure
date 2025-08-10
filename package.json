@@ -20,7 +20,7 @@
     "typescript": "~5.6.3"
   },
   "dependencies": {
-    "aws-cdk-cloudfront-key-pair": "git://github.com/crazymykl/aws-cdk-cloudfront-key-pair.git#v1.0.1",
+    "aws-cdk-cloudfront-key-pair": "git://github.com/crazymykl/aws-cdk-cloudfront-key-pair.git#v2.0.0",
     "aws-cdk-lib": "^2.210.0",
     "constructs": "^10.0.0"
   }
