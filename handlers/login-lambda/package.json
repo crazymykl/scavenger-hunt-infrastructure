@@ -1,0 +1,21 @@
+{
+  "name": "login-lambda",
+  "version": "1.0.0",
+  "description": "",
+  "author": "Mike MacDonald",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "build": "tsc && sed -i \"s/#STAGE_TYPE#/${STAGE_TYPE:?Need to know what stage to build for}/g\" dist/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.864.0",
+    "@aws-sdk/cloudfront-signer": "^3.862.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.152",
+    "@types/node": "^22.17.1",
+    "typescript": "^5.9.2"
+  }
+}

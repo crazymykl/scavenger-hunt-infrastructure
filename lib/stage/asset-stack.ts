@@ -1,8 +1,24 @@
 import { CfnOutput, Stack, StackProps } from "aws-cdk-lib"
-import { AccessLevel, Distribution } from "aws-cdk-lib/aws-cloudfront"
+import {
+  AccessLevel,
+  Distribution,
+  KeyGroup,
+  LambdaEdgeEventType,
+  PriceClass,
+  ViewerProtocolPolicy,
+} from "aws-cdk-lib/aws-cloudfront"
 import { S3BucketOrigin } from "aws-cdk-lib/aws-cloudfront-origins"
+import { Code, Runtime, Function } from "aws-cdk-lib/aws-lambda"
 import { BlockPublicAccess, Bucket } from "aws-cdk-lib/aws-s3"
 import { Construct } from "constructs"
+import { CloudFrontKeyPair } from "aws-cdk-cloudfront-key-pair"
+import path = require("path")
+import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam"
+import { StageType } from "../stage-type"
+
+interface AssetStackProps extends StackProps {
+  readonly stageType: StageType
+}
 
 export class AssetStack extends Stack {
   readonly bucketName: CfnOutput
@@ -10,20 +26,83 @@ export class AssetStack extends Stack {
   readonly distributionId: CfnOutput
   readonly distributionArn: CfnOutput
 
-  constructor(scope: Construct, id: string, props?: StackProps) {
+  constructor(scope: Construct, id: string, props: AssetStackProps) {
     super(scope, id, props)
 
     const bucket = new Bucket(this, "bucket", {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
     })
 
-    const distribution = new Distribution(this, "cdn-distro", {
-      defaultRootObject: "index.html",
-      defaultBehavior: {
-        origin: S3BucketOrigin.withOriginAccessControl(bucket, {
-          originAccessLevels: [AccessLevel.READ],
+    const { publicKey } = new CloudFrontKeyPair(this, "keyPair", {
+      name: `admin-key-pair-${props.stageType}`,
+      description: "restricts access to the admin (non-public) page",
+    })
+
+    const keyGroup = new KeyGroup(this, "keyGroup", {
+      items: [publicKey],
+    })
+
+    const origin = S3BucketOrigin.withOriginAccessControl(bucket, {
+      originAccessLevels: [AccessLevel.READ],
+    })
+
+    const loginLambda = new Function(this, "loginLambda", {
+      code: Code.fromAsset(
+        path.join(__dirname, "../../handlers/login-lambda"),
+        {
+          bundling: {
+            image: Runtime.NODEJS_22_X.bundlingImage,
+            environment: {
+              STAGE_TYPE: props.stageType,
+            },
+            command: [
+              "bash",
+              "-c",
+              "npm ci && npm run build && cp dist/* package.json package-lock.json /asset-output",
+            ],
+          },
+        },
+      ),
+      handler: "index.handler",
+      runtime: Runtime.NODEJS_22_X,
+
+      initialPolicy: [
+        new PolicyStatement({
+          actions: ["secretsmanager:GetSecretValue"],
+          resources: ["*"],
+          effect: Effect.ALLOW,
         }),
+      ],
+    })
+
+    const defaultBehavior = {
+      origin,
+      viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+    }
+
+    const adminBehavior = {
+      ...defaultBehavior,
+      trustedKeyGroups: [keyGroup],
+    }
+
+    const loginBehavior = {
+      ...adminBehavior,
+      edgeLambdas: [
+        {
+          functionVersion: loginLambda.currentVersion,
+          eventType: LambdaEdgeEventType.VIEWER_REQUEST,
+        },
+      ],
+    }
+
+    const distribution = new Distribution(this, "cdn-distro", {
+      additionalBehaviors: {
+        "admin.html": adminBehavior,
+        "hunt.shadow.json": adminBehavior,
+        login: loginBehavior,
       },
+      defaultRootObject: "index.html",
+      defaultBehavior,
       errorResponses: [
         {
           httpStatus: 403,
@@ -31,6 +110,7 @@ export class AssetStack extends Stack {
           responseHttpStatus: 200,
         },
       ],
+      priceClass: PriceClass.PRICE_CLASS_100,
     })
 
     this.bucketName = new CfnOutput(this, "bucketName", {

@@ -16,7 +16,7 @@ export class ScavengerHuntStage extends Stage {
   constructor(scope: Construct, id: string, props: ScavengerHuntStageProps) {
     super(scope, id, props)
 
-    this.assets = new AssetStack(this, "assets")
+    this.assets = new AssetStack(this, "assets", { stageType: props.stageType })
   }
 
   addToPipeline(pipeline: CodePipeline) {
