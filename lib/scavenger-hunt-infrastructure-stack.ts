@@ -3,6 +3,7 @@ import { Construct } from "constructs"
 import { CodePipeline, ShellStep } from "aws-cdk-lib/pipelines"
 import { ScavengerHuntStage } from "./scavenger-hunt-stage"
 import { codestarConnection } from "./codestar-connection"
+import { HuntPipeline } from "./hunt-pipeline"
 
 export class ScavengerHuntInfrastructureStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -16,12 +17,18 @@ export class ScavengerHuntInfrastructureStack extends Stack {
       commands: ["npm ci", "npm run build", "npx cdk synth"],
     })
 
-    const pipeline = new CodePipeline(this, "Pipeline", {
+    const pipeline = new HuntPipeline(this, "Pipeline", {
       synth,
+      source: codestarConnection("crazymykl/scavenger-hunt", "main"),
     })
 
     new ScavengerHuntStage(this, "beta-stage", {
       stageType: "beta",
+    }).addToPipeline(pipeline)
+
+    new ScavengerHuntStage(this, "prod-stage", {
+      stageType: "prod",
+      domainName: "hunt.popcultanimecon.com",
     }).addToPipeline(pipeline)
   }
 }

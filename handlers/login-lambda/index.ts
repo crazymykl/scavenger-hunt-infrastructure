@@ -18,7 +18,7 @@ const privateKey = await getSecret(`admin-key-pair-#STAGE_TYPE#/private`)
 
 export const handler: CloudFrontRequestHandler = async event => {
   const { cf } = event.Records[0]
-  const domainName = cf.config.distributionDomainName
+  const domainName = cf.request.headers.host[0].value
   const expiry = new Date(Date.now() + 60 * 60 * 1000 * 24 * 7)
 
   return {
@@ -52,7 +52,9 @@ const getCookies = (domainName: string, expiry: Date): CloudFrontHeaders => {
 
   const cookie = (key: keyof typeof signedCookie) => ({
     key: "Set-Cookie",
-    value: `${key}=${signedCookie[key]};Domain=${domainName};Path=/;Expires=${expiry.toUTCString()};Secure;HttpOnly;SameSite=Lax`,
+    value:
+      `${key}=${signedCookie[key]};Domain=${domainName};Path=/;` +
+      `Expires=${expiry.toUTCString()};Secure;HttpOnly;SameSite=Lax`,
   })
 
   return {
