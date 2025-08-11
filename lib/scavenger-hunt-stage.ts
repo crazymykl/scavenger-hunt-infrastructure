@@ -2,9 +2,9 @@ import { StageType } from "./stage-type"
 import { Construct } from "constructs"
 import { AssetStack } from "./stage/asset-stack"
 import { Stage, StageProps } from "aws-cdk-lib"
-import { CodeBuildStep, CodePipeline, ShellStep } from "aws-cdk-lib/pipelines"
+import { CodeBuildStep, ShellStep } from "aws-cdk-lib/pipelines"
 import { PolicyStatement } from "aws-cdk-lib/aws-iam"
-import { codestarConnection } from "./codestar-connection"
+import { HuntPipeline } from "./hunt-pipeline"
 
 interface ScavengerHuntStageProps extends StageProps {
   stageType: StageType
@@ -19,12 +19,12 @@ export class ScavengerHuntStage extends Stage {
     this.assets = new AssetStack(this, "assets", { stageType: props.stageType })
   }
 
-  addToPipeline(pipeline: CodePipeline) {
+  addToPipeline(pipeline: HuntPipeline) {
     const { bucketName, bucketArn, distributionId, distributionArn } =
       this.assets
 
     const appBuild = new ShellStep("AppBuild", {
-      input: codestarConnection("crazymykl/scavenger-hunt", "main"),
+      input: pipeline.source,
       commands: ["npm ci", "npm run build"],
       primaryOutputDirectory: "dist",
     })
