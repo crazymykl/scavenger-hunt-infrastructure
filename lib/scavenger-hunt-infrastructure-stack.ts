@@ -12,7 +12,7 @@ export class ScavengerHuntInfrastructureStack extends Stack {
     const synth = new ShellStep("Synth", {
       input: codestarConnection(
         "crazymykl/scavenger-hunt-infrastructure",
-        "main",
+        "dev", // FIXME: Update to "main" after testing
       ),
       commands: ["npm ci", "npm run build", "npx cdk synth"],
     })
@@ -20,7 +20,6 @@ export class ScavengerHuntInfrastructureStack extends Stack {
     const pipeline = new HuntPipeline(this, "Pipeline", {
       synth,
       source: codestarConnection("crazymykl/scavenger-hunt", "main"),
-      selfMutation: false, // FIXME: Enable self-mutation after initial deployment
     })
 
     new ScavengerHuntStage(this, "beta-stage", {
@@ -29,6 +28,7 @@ export class ScavengerHuntInfrastructureStack extends Stack {
 
     new ScavengerHuntStage(this, "prod-stage", {
       stageType: "prod",
+      domainName: "hunt.popcultanimecon.com",
     }).addToPipeline(pipeline)
   }
 }

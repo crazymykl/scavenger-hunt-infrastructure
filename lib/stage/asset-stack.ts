@@ -15,9 +15,13 @@ import { CloudFrontKeyPair } from "aws-cdk-cloudfront-key-pair"
 import path = require("path")
 import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam"
 import { StageType } from "../stage-type"
+import { ARecord, RecordTarget } from "aws-cdk-lib/aws-route53"
+import { CloudFrontTarget } from "aws-cdk-lib/aws-route53-targets"
+import { DomainInfo } from "./dns-stack"
 
 interface AssetStackProps extends StackProps {
   readonly stageType: StageType
+  readonly domainInfo?: DomainInfo
 }
 
 export class AssetStack extends Stack {
@@ -25,6 +29,7 @@ export class AssetStack extends Stack {
   readonly bucketArn: CfnOutput
   readonly distributionId: CfnOutput
   readonly distributionArn: CfnOutput
+  readonly domainName: CfnOutput
 
   constructor(scope: Construct, id: string, props: AssetStackProps) {
     super(scope, id, props)
@@ -108,8 +113,10 @@ export class AssetStack extends Stack {
         "hunt.shadow.json": adminBehavior,
         login: loginBehavior,
       },
+      certificate: props.domainInfo?.certificate,
       defaultRootObject: "index.html",
       defaultBehavior,
+      domainNames: props.domainInfo ? [props.domainInfo.domainName] : [],
       errorResponses: [
         {
           httpStatus: 403,
@@ -119,6 +126,14 @@ export class AssetStack extends Stack {
       ],
       priceClass: PriceClass.PRICE_CLASS_100,
     })
+
+    if (props.domainInfo) {
+      new ARecord(this, "cdn-distro-record", {
+        zone: props.domainInfo.hostedZone,
+        recordName: props.domainInfo.domainName,
+        target: RecordTarget.fromAlias(new CloudFrontTarget(distribution)),
+      })
+    }
 
     this.bucketName = new CfnOutput(this, "bucketName", {
       value: bucket.bucketName,
@@ -134,6 +149,10 @@ export class AssetStack extends Stack {
     this.distributionArn = new CfnOutput(this, "distributionArn", {
       value: distribution.distributionArn,
       exportName: `${this.stackName}-distributionArn`,
+    })
+    this.domainName = new CfnOutput(this, "domainName", {
+      value:
+        props.domainInfo?.domainName ?? distribution.distributionDomainName,
     })
   }
 }

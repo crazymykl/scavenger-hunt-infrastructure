@@ -5,9 +5,11 @@ import { Stage, StageProps } from "aws-cdk-lib"
 import { CodeBuildStep, ShellStep } from "aws-cdk-lib/pipelines"
 import { PolicyStatement } from "aws-cdk-lib/aws-iam"
 import { HuntPipeline } from "./hunt-pipeline"
+import { DnsStack } from "./stage/dns-stack"
 
 interface ScavengerHuntStageProps extends StageProps {
   stageType: StageType
+  domainName?: string
 }
 
 export class ScavengerHuntStage extends Stage {
@@ -16,7 +18,16 @@ export class ScavengerHuntStage extends Stage {
   constructor(scope: Construct, id: string, props: ScavengerHuntStageProps) {
     super(scope, id, props)
 
-    this.assets = new AssetStack(this, "assets", { stageType: props.stageType })
+    const domainInfo = props.domainName
+      ? new DnsStack(this, "dns", {
+          domainName: props.domainName,
+        }).domainInfo
+      : undefined
+
+    this.assets = new AssetStack(this, "assets", {
+      stageType: props.stageType,
+      domainInfo,
+    })
   }
 
   addToPipeline(pipeline: HuntPipeline) {
